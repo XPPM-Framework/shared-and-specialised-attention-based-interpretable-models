@@ -4,11 +4,12 @@ import numpy as np
 
 import tensorflow as tf
 from tensorflow import keras
-from tensorflow.keras import layers, backend, Model, callbacks
-from tensorflow.keras.utils import to_categorical, plot_model
-from tensorflow.keras.regularizers import l2
+from keras import layers, backend, Model, callbacks
+from keras.utils import to_categorical, plot_model
+from keras.regularizers import l2
 
 import matplotlib.pyplot as plt
+print(tf.__version__,)
 
 def shared_model(vec, weights, indexes, pre_index, args):
 

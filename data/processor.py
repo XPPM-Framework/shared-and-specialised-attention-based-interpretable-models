@@ -57,7 +57,7 @@ def create_index(log_df, column):
     Returns:
         index of a categorical attribute pairs.
     """
-    temp_list = temp_list = log_df[log_df[column] != 'none'][[column]].values.tolist() #remove all 'none' values from the index
+    temp_list = log_df[log_df[column] != 'none'][[column]].values.tolist() #remove all 'none' values from the index
     subsec_set = {(x[0]) for x in temp_list}
     subsec_set = sorted(list(subsec_set))
     alias = dict()
