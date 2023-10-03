@@ -3,7 +3,7 @@ import sys
 from pathlib import Path
 from typing import Optional, TextIO
 
-from bpic_2012_W import train as run_bpic_2012_W
+import bpic_2012_W
 from data.args import get_parameters
 
 import typer
@@ -34,14 +34,30 @@ def train(dataset: Path, configuration: str, model_path: Path, *, log_file: Opti
     # typer.echo(f"Logging to {output if output is not None else 'stdout'}")
     # output: TextIO = open(str(log), "w") if output is None else sys.stdout
 
-    run_bpic_2012_W(params=config, dataset_path=dataset, model_path=model_path)
+    loss, acc = bpic_2012_W.train(params=config, dataset_path=dataset, model_path=model_path)
 
     log_file.close()
 
 
-@app.command("test")
-def test():
-    pass
+@app.command("evaluate")
+def evaluate(dataset: Path, configuration: str, model_path: Path, *, log_file: Optional[Path] = None):
+    # Add proper file extension to model_file if not given
+    if not model_path.suffix:
+        model_path = model_path.with_suffix(".keras")
+
+    typer.echo(f"Evaluating model saved in {model_path} method Wickramanayake2022 on dataset {dataset}")
+
+    config = get_configuration(configuration)
+
+    typer.echo(f"Writing results to {log_file if log_file is not None else 'stdout'}")
+    log_file: TextIO = open(str(log_file), "w") if log_file is None else sys.stdout
+    # TODO: Switch to proper logging
+    # typer.echo(f"Logging to {output if output is not None else 'stdout'}")
+    # output: TextIO = open(str(log), "w") if output is None else sys.stdout
+
+    bpic_2012_W.evaluate(params=config, dataset_path=dataset, model_path=model_path)
+
+    log_file.close()
 
 
 def get_configuration(configuration: str) -> dict:
