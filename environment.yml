@@ -1,0 +1,16 @@
+name: Wickramanayake2022
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - jupyter-notebook
+  - TensorFlow>=2.5
+  - keras~=2.13.1rc0
+  - pandas~=1.5.3
+  - scipy~=1.11.1
+  - numpy
+  - scikit-learn
+  - seaborn
+  - pyflowchart
+  - plotly
+  - typer
