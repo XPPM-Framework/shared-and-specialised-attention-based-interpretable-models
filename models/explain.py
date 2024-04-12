@@ -143,8 +143,6 @@ def shared_explain_local(shared_output_with_attention,x_test,y_test,index_ac, in
   print('ground truth: '+ground_truth)
   print('prediction probability:'+str(round(probability,4)))
 
-  
-
   #Generate Feature Names
   feature_names_all = []
   for key in range(len(index_ac)):
@@ -378,7 +376,7 @@ def explain_global(output_with_attention,x_test,y_test,index_ac, index_rl,n,pred
     feature_category.append('role')
     
     top_features.append('t_lapsed')
-    feature_contribution.append(abs(contexts_t[i]))
+    feature_contribution.append(abs(contexts_t[i][0]))
     feature_category.append('time_lapsed')
 
 
@@ -501,7 +499,7 @@ def explain_local(output_with_attention,x_test,y_test,index_ac,index_rl,index_ne
         feature_category.append('role')
         
         top_features.append('t_lapsed')
-        feature_contribution.append(abs(contexts_t[i]))
+        feature_contribution.append(abs(contexts_t[i][0]))
         feature_category.append('time_lapsed')
 
 
