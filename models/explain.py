@@ -124,22 +124,23 @@ def shared_explain_global(shared_output_with_attention, x_test, y_test, index_ac
     fig.show()
 
 
-def shared_explain_local(shared_output_with_attention, x_test, y_test, index_ac, index_rl, index_ne, n, m):
+def shared_explain_local(shared_output_with_attention, x_test, y_test, indices: dict[str, dict], n, m, *, visualize: bool = False):
     """
 
-  Args:
-      shared_output_with_attention:
-      x_test:
-      y_test:
-      index_ac: Index -> Activity Mapping
-      index_rl: Index -> Role Mapping
-      index_ne:
-      n:
-      m: The index of the trace to explain
+    Args:
+        shared_output_with_attention:
+        x_test:
+        y_test:
+        indices: Index mappings for activity (ac), role (rl), and next activity (ne). E.g., index_ac, ac_index, ...
+        n:
+        m: The index of the trace to explain
+        visualize: Whether to visualize the explanation or not.
 
-  Returns:
+    Returns:
 
-  """
+    """
+    index_ac, index_rl, index_ne = indices["index_ac"], indices["index_rl"], indices["index_ne"]
+
     #prediction output
     y_pred = shared_output_with_attention[0]
     predicted = index_ne[np.argmax(y_pred[m])]
@@ -221,7 +222,6 @@ def shared_explain_local(shared_output_with_attention, x_test, y_test, index_ac,
     #if the feature is present in the trace (by evaluating if the feature is actually a part of the actual timestep, given the timestep in inside the actual trace)
 
     #visualizing the influential features in a scatter plot
-
     df_vis = pd.DataFrame(columns=['timestep', 'feature', 'contribution', 'feature_category'])
     df_vis['timestep'] = influential_features['timestep']
     df_vis['feature'] = influential_features['feature']
@@ -230,45 +230,46 @@ def shared_explain_local(shared_output_with_attention, x_test, y_test, index_ac,
     df_vis['contribution'] = df_vis['contribution'].replace({0.0: np.nan, -0.0: np.nan})
     df_vis['feature_short'] = df_vis['feature'].map(feature_dict)
 
-    fig = px.bar(df_vis, x="timestep", y="contribution",
-                 title="Feature Contribution",
-                 labels={"contribution": "Feature Contribution in key timesteps"}, color='feature_category',
-                 color_discrete_map={
-                     'activity': 'darkcyan',
-                     'role': 'darkslateblue', 'time_lapsed': 'lightslategray'}, text="feature",  # customize axis label
-                 barmode='group', width=1000, height=600)
-    fig.update_traces(textposition='auto', textfont_size=14, textangle=90)
-    fig.update_layout(plot_bgcolor='rgb(182,182,184)', bargap=0.05, uniformtext=dict(minsize=14, mode='show'))
+    if visualize:
+        fig = px.bar(df_vis, x="timestep", y="contribution",
+                     title="Feature Contribution",
+                     labels={"contribution": "Feature Contribution in key timesteps"}, color='feature_category',
+                     color_discrete_map={
+                         'activity': 'darkcyan',
+                         'role': 'darkslateblue', 'time_lapsed': 'lightslategray'}, text="feature",  # customize axis label
+                     barmode='group', width=1000, height=600)
+        fig.update_traces(textposition='auto', textfont_size=14, textangle=90)
+        fig.update_layout(plot_bgcolor='rgb(182,182,184)', bargap=0.05, uniformtext=dict(minsize=14, mode='show'))
 
-    fig.show()
+        fig.show()
 
-    #Obtaining the actual trace as a flow chart
+        #Obtaining the actual trace as a flow chart
 
-    trace = dict()
+        act = x_test[0][m][:steps][::-1]
+        role = x_test[1][m][:steps][::-1]
+        tr = x_test[2][m][:steps][::-1]
+        ne = y_test[m]
 
-    act = x_test[0][m][:steps][::-1]
-    role = x_test[1][m][:steps][::-1]
-    tr = x_test[2][m][:steps][::-1]
-    ne = y_test[m]
+        st = StartNode(index_ac[act[0]] + '_role:' + index_rl[role[0]])
 
-    st = StartNode(index_ac[act[0]] + '_role:' + index_rl[role[0]])
+        for i in range(steps - 1):
+            globals()[f'op_{i + 1}'] = OperationNode(index_ac[act[i + 1]] + '_role:' + index_rl[role[i + 1]])
+            if i == 0:
+                st.connect(globals()[f'op_{i + 1}'])
+            else:
+                globals()[f'op_{i}'].connect(globals()[f'op_{i + 1}'])
+                del globals()[f'op_{i}']
 
-    for i in range(steps - 1):
-        globals()[f'op_{i + 1}'] = OperationNode(index_ac[act[i + 1]] + '_role:' + index_rl[role[i + 1]])
-        if i == 0:
-            st.connect(globals()[f'op_{i + 1}'])
-        else:
-            globals()[f'op_{i}'].connect(globals()[f'op_{i + 1}'])
-            del globals()[f'op_{i}']
+        #e = EndNode(next_activity)
+        #globals()[f'op_{steps-1}'].connect(e)
+        del globals()[f'op_{steps - 1}']
 
-    #e = EndNode(next_activity)
-    #globals()[f'op_{steps-1}'].connect(e)
-    del globals()[f'op_{steps - 1}']
+        fc = Flowchart(st)
+        print('process flowchart')
+        print(fc.flowchart())
+        print('\n')
 
-    fc = Flowchart(st)
-    print('process flowchart')
-    print(fc.flowchart())
-    print('\n')
+    return df_vis
 
 
 #----------------------------------------------------------------------------------------------------------------------------------
