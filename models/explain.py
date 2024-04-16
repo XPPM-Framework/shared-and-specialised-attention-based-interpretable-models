@@ -146,9 +146,9 @@ def shared_explain_local(shared_output_with_attention, x_test, y_test, indices: 
     predicted = index_ne[np.argmax(y_pred[m])]
     ground_truth = index_ne[np.argmax(y_test[m])]
     probability = y_pred[m].max()
-    print('prediction: ' + predicted)
-    print('ground truth: ' + ground_truth)
-    print('prediction probability:' + str(round(probability, 4)))
+    # print('prediction: ' + predicted)
+    # print('ground truth: ' + ground_truth)
+    # print('prediction probability:' + str(round(probability, 4)))
 
     #Generate Feature Names
     feature_names_all = []
@@ -195,6 +195,7 @@ def shared_explain_local(shared_output_with_attention, x_test, y_test, indices: 
     top_features = []
     feature_category = []
     feature_contribution = []
+    activity = x_test[0][m]
 
     for i, _ in enumerate(contexts):
         timestep.append((np.ones(3) * (
@@ -227,7 +228,8 @@ def shared_explain_local(shared_output_with_attention, x_test, y_test, indices: 
     df_vis['feature'] = influential_features['feature']
     df_vis['contribution'] = influential_features['contribution']
     df_vis['feature_category'] = influential_features['feature_category']
-    df_vis['contribution'] = df_vis['contribution'].replace({0.0: np.nan, -0.0: np.nan})
+    # We don't want this
+    # df_vis['contribution'] = df_vis['contribution'].replace({0.0: np.nan, -0.0: np.nan})
     df_vis['feature_short'] = df_vis['feature'].map(feature_dict)
 
     if visualize:
@@ -269,8 +271,37 @@ def shared_explain_local(shared_output_with_attention, x_test, y_test, indices: 
         print(fc.flowchart())
         print('\n')
 
-    return df_vis
+    return ground_truth, predicted, df_vis
 
+
+def explanation_to_row(ground_truth: str, predicted: str, df: pd.DataFrame):
+    """
+    Compacts the explanations for each step into the importance of activity, role, and time elapsed.
+    Args:
+        ground_truth: The actual next activity of the running trace.
+        predicted: The predicted next activity of the running trace.
+        df: The explanation dataframe containing
+
+    Returns:
+        A single row for a dataframe of the explanations of all traces.
+        Contains the ground truth, prediction by the model, the feature (category) for each value in the explanation, and the explanation vector.
+
+    """
+    df_exp = df.copy()
+    # Get length of trace by counting non-none activities
+    trace_length = len(df_exp[(df_exp["feature_category"] == "activity") & (df_exp["feature"] != "none")])
+    no_features = len(df_exp["feature_category"].unique())  # Number of features
+    # Set contributions to zero if they are past the trace length
+    df_exp.loc[df_exp.index >= trace_length * no_features, "contribution"] = 0
+    row_dict = {
+        "ground_truth": ground_truth,
+        "prediction": predicted,
+        "features": df_exp["feature_category"].tolist(),
+        "explanation": df_exp["contribution"].tolist(),
+    }
+    df_row = pd.DataFrame([row_dict])
+
+    return df_row
 
 #----------------------------------------------------------------------------------------------------------------------------------
 #-- Functions to visualize the modified model attention layer
