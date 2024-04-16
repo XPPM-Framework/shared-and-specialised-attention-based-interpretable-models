@@ -156,21 +156,21 @@ def vectorization(log, ac_index, rl_index, ne_index,trc_len,cases):
         padding = np.zeros(len_ac-len(log[i]['ac_order']))
 
         if i == 0:
-                vec['prefixes']['x_ac_inp'] = np.array(np.append(log[i]['ac_order'],padding))
-                vec['prefixes']['x_rl_inp'] = np.array(np.append(log[i]['rl_order'],padding))
-                vec['prefixes']['xt_inp'] = np.array(np.append(log[i]['tbtw'],padding))
-                vec['next_activity'] = np.array(log[i]['next_activity'])
-                vec['prop']['len'] = np.array(len(log[i]['ac_order']))
+            vec['prefixes']['x_ac_inp'] = np.array(np.append(log[i]['ac_order'],padding))
+            vec['prefixes']['x_rl_inp'] = np.array(np.append(log[i]['rl_order'],padding))
+            vec['prefixes']['xt_inp'] = np.array(np.append(log[i]['tbtw'],padding))
+            vec['next_activity'] = np.array(log[i]['next_activity'])
+            vec['prop']['len'] = np.array(len(log[i]['ac_order']))
 
-
-        vec['prefixes']['x_ac_inp'] = np.concatenate((vec['prefixes']['x_ac_inp'],
-                                                                np.array(np.append(log[i]['ac_order'],padding))), axis=0)
-        vec['prefixes']['x_rl_inp'] = np.concatenate((vec['prefixes']['x_rl_inp'],
-                                                                np.array(np.append(log[i]['rl_order'],padding))), axis=0)
-        vec['prefixes']['xt_inp'] = np.concatenate((vec['prefixes']['xt_inp'],
-                                                            np.array(np.append(log[i]['tbtw'],padding))), axis=0)
-        vec['next_activity'] = np.append(vec['next_activity'],log[i]['next_activity'])
-        vec['prop']['len'] = np.append(vec['prop']['len'],len(log[i]['ac_order']))
+        else:
+            vec['prefixes']['x_ac_inp'] = np.concatenate((vec['prefixes']['x_ac_inp'],
+                                                                    np.array(np.append(log[i]['ac_order'],padding))), axis=0)
+            vec['prefixes']['x_rl_inp'] = np.concatenate((vec['prefixes']['x_rl_inp'],
+                                                                    np.array(np.append(log[i]['rl_order'],padding))), axis=0)
+            vec['prefixes']['xt_inp'] = np.concatenate((vec['prefixes']['xt_inp'],
+                                                                np.array(np.append(log[i]['tbtw'],padding))), axis=0)
+            vec['next_activity'] = np.append(vec['next_activity'],log[i]['next_activity'])
+            vec['prop']['len'] = np.append(vec['prop']['len'],len(log[i]['ac_order']))
 
     #The concatenation returns a flattened vector. Hence, reshaping the vectors at the end
     vec['prefixes']['x_ac_inp'] = np.reshape(vec['prefixes']['x_ac_inp'],(cases,len_ac))
@@ -200,7 +200,7 @@ def lengths(log):
         cases: number of cases for train and test sets
     """
     trc_len = 1
-    cases = 1
+    cases = 0
 
     for i,_ in enumerate(log):
 
