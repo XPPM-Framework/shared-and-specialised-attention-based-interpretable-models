@@ -324,21 +324,3 @@ def apply_log_config(log_df: pd.DataFrame, log_config: dict) -> pd.DataFrame:
     }
 
     return log_df.rename(rename_dict, axis=1)
-
-
-if __name__ == '__main__':
-    milestone = 'All'  # 'A_PREACCEPTED' # 'W_Nabellen offertes', 'All'
-    subset = "W"
-    experiment = 'OHE'  # 'Standard'#'OHE', 'No_loops'
-    MY_WORKSPACE_DIR = os.path.join(os.getcwd(), 'BPIC12')
-    MILESTONE_DIR = os.path.join(os.path.join(MY_WORKSPACE_DIR, milestone), experiment)
-
-    experiment_dir = Path("experiment")
-    params = {
-        "data_path": Path(os.path.join(os.path.join(MY_WORKSPACE_DIR, "Translated_dataset"),
-                                       "bpic12_translated_completed_W_all.csv")),
-        "model_path": experiment_dir / "shared_model.h5",
-        "result_dir": Path(),
-    }
-
-    main_shared(experiment_dir, params["data_path"], params["model_path"], retrain=False)
