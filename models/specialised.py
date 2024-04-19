@@ -10,7 +10,7 @@ from tensorflow.keras.regularizers import l2
 
 import matplotlib.pyplot as plt
 
-def specialised_model(vec, weights, indexes, pre_index, args):
+def specialised_model(vec, weights, indices, args):
 
     EXPERIMENT = args['experiment']
     prefix_len = args['prefix_length']
@@ -33,12 +33,12 @@ def specialised_model(vec, weights, indexes, pre_index, args):
     ac_weights = weights['ac_weights']
     rl_weights = weights['rl_weights']
     next_activity = weights['next_activity']
-    index_ac = indexes['index_ac']
-    index_rl = indexes['index_rl']
-    index_ne = indexes['index_ne']
-    ac_index = pre_index['ac_index']
-    rl_index = pre_index['rl_index']
-    ne_index = pre_index['ne_index']
+    index_ac = indices['index_ac']
+    index_rl = indices['index_rl']
+    index_ne = indices['index_ne']
+    ac_index = indices['ac_index']
+    rl_index = indices['rl_index']
+    ne_index = indices['ne_index']
 
 
     if EXPERIMENT == 'OHE':
@@ -154,16 +154,16 @@ def specialised_model(vec, weights, indexes, pre_index, args):
 
     return model
 
-def specialised_model_fit(vec_train, specialised, indexes, pre_index, MY_WORKSPACE_DIR, batch_size, epochs, args):
-    
+
+def specialised_model_fit(vec_train, specialised, indices, batch_size, epochs, args):
     EXPERIMENT = args['experiment']
 
     early_stopping = callbacks.EarlyStopping(monitor='val_loss', patience=10)
 
-    output_file_path = os.path.join(os.path.join(MY_WORKSPACE_DIR,
-                                        'models'),'model_specialised_' +args['milestone']+
-                                        '_{epoch:02d}-{val_loss:.2f}.h5')
-    print('This is the output file path ', output_file_path)
+    # output_file_path = os.path.join(os.path.join(MY_WORKSPACE_DIR,
+    #                                     'models'),'model_specialised_' +args['milestone']+
+    #                                     '_{epoch:02d}-{val_loss:.2f}.h5')
+    # print('This is the output file path ', output_file_path)
         # Saving
     #model_checkpoint = callbacks.ModelCheckpoint(output_file_path,
     #                                    monitor='val_loss',
@@ -181,7 +181,7 @@ def specialised_model_fit(vec_train, specialised, indexes, pre_index, MY_WORKSPA
                                     cooldown=0,
                                     min_lr=0)
 
-    model_inputs,model_outputs = generate_inputs(vec_train,args,indexes,EXPERIMENT)
+    model_inputs,model_outputs = generate_inputs_specialised(vec_train, args, indices)
     #model_val_inputs,model_val_outputs = generate_inputs(vec_train,args,indexes)
 
     specialised_history = specialised.fit(model_inputs,
@@ -196,11 +196,11 @@ def specialised_model_fit(vec_train, specialised, indexes, pre_index, MY_WORKSPA
     return specialised_history
 
 
-def generate_inputs(vec,args,indexes,experiment):
+def generate_inputs_specialised(vec, args, indices):
 
-    index_ac = indexes['index_ac']
-    index_rl = indexes['index_rl']
-    index_ne = indexes['index_ne']
+    index_ac = indices['index_ac']
+    index_rl = indices['index_rl']
+    index_ne = indices['index_ne']
 
     experiment = args['experiment']
 

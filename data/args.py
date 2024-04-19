@@ -1,11 +1,64 @@
+import json
 import os
 import pickle
+from pathlib import Path
+from typing import Mapping
+
+
+def save_args(args, path: Path):
+    def paths_to_str(d):
+        if isinstance(d, Mapping):
+            return {k: paths_to_str(v) for k, v in d.items()}
+        elif isinstance(d, Path):
+            return str(d)
+        else:
+            return d
+
+    json.dump(paths_to_str(args), open(path, "w"), indent=4)
+    print(f"Saved args to {path}")
+
+
+def get_args(experiment_dir: Path, MILESTONE_DIR: str, MILESTONE: str, EXPERIMENT: str, n_size:int, *, args: dict = None):
+    """
+    Gets default arguments for the given milestone directory, etc. and overrides them with the provided arguments.
+    Args:
+        MILESTONE_DIR:
+        MY_WORKSPACE_DIR:
+        MILESTONE:
+        EXPERIMENT:
+        args:
+
+    Returns:
+
+    """
+    default_args = {
+        "milestone_dir": MILESTONE_DIR,
+        "folder": os.path.join(MILESTONE_DIR, "output_files"),
+        "lstm_act": None,
+        "dense_act": None,
+        "optim": "Adam",  # "Adagrad", "Adam"
+        "norm_method": "lognorm",  # "max", "lognorm"
+        "model_type": "shared_cat",  # "specialized", "concatenated", "shared_cat", "joint", "shared"
+        "l_size": 50,  # LSTM layer sizes
+        "weights": experiment_dir/"weights.pickle",
+        "milestone": MILESTONE,  # "All" or activity name
+        "experiment": EXPERIMENT,  # "OHE", "No_loops"
+        "prefix_length": "fixed",  # "variable", "fixed"
+        "n_size": n_size,  # (Explanation) Prefix size
+        "experiment_dir": experiment_dir,
+        "batch_size": 128,
+        "epochs": 256,
+    }
+    if args is not None:
+        default_args.update(args)
+    return default_args
+
 
 def _params_bpic12(MILESTONE_DIR, MY_WORKSPACE_DIR, MILESTONE, EXPERIMENT, N_SIZE):
 
     parameters = dict()
 
-    parameters['folder'] =  os.path.join(MILESTONE_DIR, "output_files")
+    parameters['folder'] = os.path.join(MILESTONE_DIR, "output_files")
     #       Specific model training parameters
     parameters['lstm_act'] = None # optimization function see keras doc
     parameters['dense_act'] = None # optimization function see keras doc

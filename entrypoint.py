@@ -1,89 +1,172 @@
+import json
 import os
+import pickle
 import sys
 from pathlib import Path
-from typing import Optional, TextIO
+from typing import Optional, TextIO, Literal, Annotated
+
+from keras.src.saving.saving_api import load_model
 
 import bpic_2012_W
-from data.args import get_parameters
+from data.args import get_parameters, get_args, save_args
 
 import typer
+import pandas as pd
+from keras.src.utils import to_categorical
 
-app = typer.Typer()
+from data.processor import split_train_test, normalize_events, reformat_events, lengths, vectorization
+from processing import preprocess, encode, get_weights, train_shared, train_specialised, evaluate_shared, \
+    explain_shared, df_log_from_list, evaluate_specialised, explain_specialised, apply_log_config
+
+app = typer.Typer(pretty_exceptions_enable=False)
 
 
 @app.command("train")
-def train(dataset: Path, configuration: str, model_path: Path, *, log_file: Optional[Path] = None):
+def train(model_type: str, dataset: Path, model_path: Path, *,
+          log_config: dict = typer.Option(default=None, help="Mapping of log columns", parser=json.loads),
+          experiment_dir: Path = None,
+          milestone: str = "All", experiment: str = "OHE",
+          n_size: int = typer.Option(default=5, help="(Explanation) Prefix size"),
+          parameters: Annotated[dict, typer.Argument(parser=json.loads)] = None):
     """
 
-    :param dataset: The dataset to train on.\n
-    :param configuration: The method configuration to load.\n
+    :param model_type: The type of model to train.Literal["shared", "specialised"]\n
+    :param dataset: The dataset to train on. Needs the columns, "caseid", "task", "role", "end_timestamp", "trace_start"
     :param model_path: The path to save the model to.\n
-    :param log_file: Overwrite for the log_file. If not specified, logs to stdout. Not properly implemented yet.\n
+    :param log_config: Mapping of log columns.\n
+    :param experiment_dir: The directory to save the relevant experiment files to. Defaults to model_path.parent.\n
+    :param milestone: "All" or activities in the dataset.\n
+    :param experiment: "OHE" or "No_loops", which filters out loops from the traces.\n
+    :param n_size: Prefix size (for explanations).\n
+    :param parameters: Dictionary of parameters for the algorithm.\n
     """
     typer.echo(f"Running experiment with method Wickramanayake2022 on dataset {dataset}")
 
-    # Add proper file extension to model_file if not given
-    if not model_path.suffix:
-        model_path = model_path.with_suffix(".keras")
+    if experiment_dir is None:
+        experiment_dir = Path(model_path.parent)
+    experiment_dir.mkdir(exist_ok=True, parents=True)
+    model_path.parent.mkdir(exist_ok=True, parents=True)
 
-    config = get_configuration(configuration)
+    MY_WORKSPACE_DIR = os.path.join(os.getcwd(), )
+    MILESTONE_DIR = os.path.join(os.path.join(MY_WORKSPACE_DIR, milestone), experiment)
 
-    typer.echo(f"Writing results to {log_file if log_file is not None else 'stdout'}")
-    log_file: TextIO = open(str(log_file), "w") if log_file is None else sys.stdout
-    # TODO: Switch to proper logging
-    # typer.echo(f"Logging to {output if output is not None else 'stdout'}")
-    # output: TextIO = open(str(log), "w") if output is None else sys.stdout
+    # Get the arguments to save next to the model after training
+    args = get_args(experiment_dir, MILESTONE_DIR, milestone, experiment, n_size, args=parameters)
+    log_df = pd.read_csv(dataset)
+    if log_config:
+        log_df = apply_log_config(log_df, log_config)
 
-    loss, acc = bpic_2012_W.train(params=config, dataset_path=dataset, model_path=model_path)
+    max_size = 1000  # 3, 5, 10, 15, 20, 30, 50, 95
+    min_size = 0  # 0, 3, 5, 10, 15, 20, 30, 50
+    # TODO: Add prefix_id to the log_df (caseid_index) if not already exists
+    log_df = preprocess(log_df, min_size, max_size, milestone, experiment)
+    log_df_encoded, indices = encode(log_df)
 
-    log_file.close()
+    args["indices"] = indices
+    index_ac = indices['index_ac']
+    index_rl = indices['index_rl']
+    index_ne = indices['index_ne']
+    ac_index = indices['ac_index']
+    rl_index = indices['rl_index']
+    ne_index = indices['ne_index']
+
+    # converting the weights into a dictionary and saving
+    indexes = {'index_ac': index_ac, 'index_rl': index_rl, 'index_ne': index_ne}
+    # converting the weights into a dictionary and saving
+    pre_index = {'ac_index': ac_index, 'rl_index': rl_index, 'ne_index': ne_index}
+
+    numerical_features = ['timelapsed']
+    log_df_encoded = normalize_events(log_df_encoded, args, numerical_features)
+    training_traces = len(log_df_encoded['prefix_id'].unique())
+    log_train = reformat_events(log_df_encoded, ac_index, rl_index, ne_index)
+    trc_len, cases_train = lengths(log_train)
+    args["trc_len"] = trc_len
+    vec_train = vectorization(log_train, ac_index, rl_index, ne_index, trc_len, cases_train)
+
+    weights = get_weights(ac_index, index_ac, index_rl, ne_index, rl_index)
+    args["weights"] = experiment_dir / f"{model_path.stem}-weights.pickle"
+    pickle.dump(weights, open(args["weights"], "wb"))
+
+    batch_size = args["batch_size"]
+    epochs = args["epochs"]
+    args["model_type"] = model_type
+    if model_type == "shared":
+        model_shared = train_shared(vec_train, weights, args, batch_size, epochs)
+        model_shared.save(model_path)
+    elif model_type == "specialised":
+        model_shared = train_specialised(vec_train, weights, indices, args, batch_size, epochs)
+        model_shared.save(model_path)
+    else:
+        raise Exception("Model type not recognized.")
+
+    args_path = model_path.with_stem(f"{model_path.stem}-args").with_suffix(".json")
+    save_args(args, args_path)
 
 
-@app.command("evaluate")
-def evaluate(dataset: Path, configuration: str, model_path: Path, *, log_file: Optional[Path] = None):
-    # Add proper file extension to model_file if not given
-    if not model_path.suffix:
-        model_path = model_path.with_suffix(".keras")
+@app.command("explain")
+def explain(dataset: Path, model_path: Path,  *,
+            log_config: dict = typer.Option(default=None, help="Mapping of log columns", parser=json.loads),
+            experiment_dir: Path = None, args_path: Path = None,
+            parameters: Annotated[dict, typer.Argument(parser=json.loads)] = None):
+    if experiment_dir is None:
+        experiment_dir = model_path.parent
+    if args_path is None:
+        args_path = model_path.with_stem(f"{model_path.stem}-args").with_suffix(".json")
+    # TODO: Load model and settings from model_path
+    model = load_model(model_path)
+    args = json.load(open(args_path))
+    if parameters:
+        args.update(parameters)
 
-    typer.echo(f"Evaluating model saved in {model_path} method Wickramanayake2022 on dataset {dataset}")
+    indices = args["indices"]
+    index_ac = indices['index_ac']
+    index_rl = indices['index_rl']
+    index_ne = indices['index_ne']
+    ac_index = indices['ac_index']
+    rl_index = indices['rl_index']
+    ne_index = indices['ne_index']
 
-    config = get_configuration(configuration)
+    log_df = pd.read_csv(dataset)
+    if log_config:
+        log_df = apply_log_config(log_df, log_config)
+    max_size = 1000  # 3, 5, 10, 15, 20, 30, 50, 95
+    min_size = 0  # 0, 3, 5, 10, 15, 20, 30, 50
+    log_df = preprocess(log_df, min_size, max_size, args["milestone"], args["experiment"])
+    log_df_encoded, indices = encode(log_df)
 
-    typer.echo(f"Writing results to {log_file if log_file is not None else 'stdout'}")
-    log_file: TextIO = open(str(log_file), "w") if log_file is None else sys.stdout
-    # TODO: Switch to proper logging
-    # typer.echo(f"Logging to {output if output is not None else 'stdout'}")
-    # output: TextIO = open(str(log), "w") if output is None else sys.stdout
+    numerical_features = ['timelapsed']
+    log_df_test = normalize_events(log_df_encoded, args, numerical_features)
+    test_traces = len(log_df_test['prefix_id'].unique())
+    log_test = reformat_events(log_df_test, ac_index, rl_index, ne_index)
 
-    bpic_2012_W.evaluate(params=config, dataset_path=dataset, model_path=model_path)
+    # We do not consider the trc_len of the test variable as we have used the trc_len in the args for training
+    trc_len = args["trc_len"]
+    _, cases_test = lengths(log_test)
+    vec_test = vectorization(log_test, ac_index, rl_index, ne_index, trc_len, cases_test)
 
-    log_file.close()
+    batch_size = args["batch_size"]
+    epochs = args["epochs"]
+    model_type = args["model_type"]
+    print(f"Explain {model_type} model")
+    if model_type == "shared":
+        eval_results = evaluate_shared(model, vec_test, args, batch_size)
+        df_explanation = explain_shared(model, vec_test, indices, args, batch_size)
+        df_log_test = df_log_from_list(log_test, indices)
+        df_complete = pd.merge(df_log_test, df_explanation, left_index=True, right_index=True)
+        output_path = experiment_dir / f"{model_path.stem}-explanations.csv"
+        df_complete.to_csv(output_path, index=False)
+        print(f"Explanations saved to {output_path}")
 
-
-def get_configuration(configuration: str) -> dict:
-    METHOD_DIR = (Path(os.getenv("METHODS_DIR", Path("../../methods"))) / "Wickramanayake2022").resolve()
-    MY_WORKSPACE_DIR = str(METHOD_DIR / 'BPIC12')
-    match configuration:
-        case "bpic12_W":
-            milestone = 'All'  # 'A_PREACCEPTED' # 'W_Nabellen offertes', 'All'
-            experiment = 'OHE'  # 'Standard'#'OHE', 'No_loops'
-            MILESTONE_DIR = os.path.join(os.path.join(MY_WORKSPACE_DIR, milestone), experiment)
-            n_size = 5
-
-            return get_parameters('bpic12', MILESTONE_DIR, MY_WORKSPACE_DIR, milestone, experiment, n_size)
-
-    """
-    args['file_name_A_ex'] = os.path.join(os.path.join(MY_WORKSPACE_DIR, "Translated_dataset"),
-                                          "bpic12_translated_completed_A_ex.csv")
-    args['file_name_O_ex'] = os.path.join(os.path.join(MY_WORKSPACE_DIR, "Translated_dataset"),
-                                          "bpic12_translated_completed_O_ex.csv")
-    args['file_name_A_all'] = os.path.join(os.path.join(MY_WORKSPACE_DIR, "Translated_dataset"),
-                                           "bpic12_translated_completed_A_all.csv")
-    args['file_name_O_all'] = os.path.join(os.path.join(MY_WORKSPACE_DIR, "Translated_dataset"),
-                                           "bpic12_translated_completed_O_all.csv")
-    args['file_name_W_all'] = os.path.join(os.path.join(MY_WORKSPACE_DIR, "Translated_dataset"),
-                                           "bpic12_translated_completed_W_all.csv")
-    """
+    elif model_type == "specialised":
+        eval_results = evaluate_specialised(model, vec_test, indices, args, batch_size)
+        df_explanation = explain_specialised(model, vec_test, indices, args, batch_size)
+        df_log_test = df_log_from_list(log_test, indices)
+        df_complete = pd.merge(df_log_test, df_explanation, left_index=True, right_index=True)
+        output_path = experiment_dir / f"{model_path.stem}-explanations.csv"
+        df_complete.to_csv(output_path, index=False)
+        print(f"Explanations saved to {output_path}")
+    else:
+        raise Exception(f"Model type '{model_type}' not recognized.")
 
 
 if __name__ == '__main__':

@@ -116,12 +116,8 @@ def shared_model(vec, weights, args):
     return shared
 
 
-def shared_model_fit(vec_train, shared, MY_WORKSPACE_DIR, batch_size, epochs, args):
+def shared_model_fit(vec_train, shared, batch_size, epochs, args):
     early_stopping = callbacks.EarlyStopping(monitor='val_loss', patience=10)
-
-    output_file_path = os.path.join(os.path.join(MY_WORKSPACE_DIR,
-                                                 'models'), 'model_shared_' + args['milestone'] +
-                                    '_{epoch:02d}-{val_loss:.2f}.h5')
 
     lr_reducer = callbacks.ReduceLROnPlateau(monitor='val_loss',
                                              factor=0.5,

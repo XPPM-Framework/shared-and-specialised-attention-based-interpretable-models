@@ -4,3 +4,4 @@ __pycache__/
 *.keras
 BPIC12/
 *.csv
+experiments/
