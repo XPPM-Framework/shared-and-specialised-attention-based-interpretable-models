@@ -151,22 +151,19 @@ def explain(dataset: Path, model_path: Path,  *,
     if model_type == "shared":
         eval_results = evaluate_shared(model, vec_test, args, batch_size)
         df_explanation = explain_shared(model, vec_test, indices, args, batch_size)
-        df_log_test = df_log_from_list(log_test, indices)
-        df_complete = pd.merge(df_log_test, df_explanation, left_index=True, right_index=True)
-        output_path = experiment_dir / f"{model_path.stem}-explanations.csv"
-        df_complete.to_csv(output_path, index=False)
-        print(f"Explanations saved to {output_path}")
 
     elif model_type == "specialised":
         eval_results = evaluate_specialised(model, vec_test, indices, args, batch_size)
         df_explanation = explain_specialised(model, vec_test, indices, args, batch_size)
-        df_log_test = df_log_from_list(log_test, indices)
-        df_complete = pd.merge(df_log_test, df_explanation, left_index=True, right_index=True)
-        output_path = experiment_dir / f"{model_path.stem}-explanations.csv"
-        df_complete.to_csv(output_path, index=False)
-        print(f"Explanations saved to {output_path}")
     else:
         raise Exception(f"Model type '{model_type}' not recognized.")
+
+    print("eval loss, accuracy", eval_results)
+    df_log_test = df_log_from_list(log_test, indices)
+    df_complete = pd.merge(df_log_test, df_explanation, left_index=True, right_index=True)
+    output_path = experiment_dir / f"{model_path.stem}-explanations.csv"
+    df_complete.to_csv(output_path, index=False)
+    print(f"Explanations saved to {output_path}")
 
 
 if __name__ == '__main__':
