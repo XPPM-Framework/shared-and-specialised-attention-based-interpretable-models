@@ -160,9 +160,9 @@ def explain(dataset: Path, model_path: Path,  *,
     df_log_test = df_log_from_list(log_test, indices)
     df_complete = pd.merge(df_log_test, df_explanation, left_index=True, right_index=True)
     # Reverse "ac_prefix", "rl_prefix", "tbtw_prefix" columns as they are written in reverse order
-    df_complete["ac_prefix"] = df_complete["ac_prefix"].apply(lambda x: list(reversed(x)))
-    df_complete["rl_prefix"] = df_complete["rl_prefix"].apply(lambda x: list(reversed(x)))
-    df_complete["tbtw_prefix"] = df_complete["tbtw_prefix"].apply(lambda x: list(reversed(x)))
+    # df_complete["ac_prefix"] = df_complete["ac_prefix"].apply(lambda x: list(reversed(x)))
+    # df_complete["rl_prefix"] = df_complete["rl_prefix"].apply(lambda x: list(reversed(x)))
+    # df_complete["tbtw_prefix"] = df_complete["tbtw_prefix"].apply(lambda x: list(reversed(x)))
     output_path = experiment_dir / f"{model_path.stem}-explanations.csv"
     df_complete.to_csv(output_path, index=False)
     print(f"Explanations saved to {output_path}")
