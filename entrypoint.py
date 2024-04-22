@@ -1,13 +1,11 @@
 import json
 import os
 import pickle
-import sys
 from pathlib import Path
-from typing import Optional, TextIO, Literal, Annotated
+from typing import Annotated
 
 from keras.src.saving.saving_api import load_model
 
-import bpic_2012_W
 from data.args import get_parameters, get_args, save_args
 
 import typer
@@ -161,6 +159,10 @@ def explain(dataset: Path, model_path: Path,  *,
     print("eval loss, accuracy", eval_results)
     df_log_test = df_log_from_list(log_test, indices)
     df_complete = pd.merge(df_log_test, df_explanation, left_index=True, right_index=True)
+    # Reverse "ac_prefix", "rl_prefix", "tbtw_prefix" columns as they are written in reverse order
+    df_complete["ac_prefix"] = df_complete["ac_prefix"].apply(lambda x: list(reversed(x)))
+    df_complete["rl_prefix"] = df_complete["rl_prefix"].apply(lambda x: list(reversed(x)))
+    df_complete["tbtw_prefix"] = df_complete["tbtw_prefix"].apply(lambda x: list(reversed(x)))
     output_path = experiment_dir / f"{model_path.stem}-explanations.csv"
     df_complete.to_csv(output_path, index=False)
     print(f"Explanations saved to {output_path}")
