@@ -14,7 +14,7 @@ from keras.src.utils import to_categorical
 
 from data.processor import split_train_test, normalize_events, reformat_events, lengths, vectorization
 from processing import preprocess, encode, get_weights, train_shared, train_specialised, evaluate_shared, \
-    explain_shared, df_log_from_list, evaluate_specialised, explain_specialised, apply_log_config
+    explain_shared, df_log_from_list, evaluate_specialised, explain_specialised, apply_log_config, restore_indices_int
 
 app = typer.Typer(pretty_exceptions_enable=False)
 
@@ -117,6 +117,7 @@ def explain(dataset: Path, model_path: Path,  *,
         args.update(parameters)
 
     indices = args["indices"]
+    indices = restore_indices_int(indices)
     index_ac = indices['index_ac']
     index_rl = indices['index_rl']
     index_ne = indices['index_ne']
@@ -130,7 +131,7 @@ def explain(dataset: Path, model_path: Path,  *,
     max_size = 1000  # 3, 5, 10, 15, 20, 30, 50, 95
     min_size = 0  # 0, 3, 5, 10, 15, 20, 30, 50
     log_df = preprocess(log_df, min_size, max_size, args["milestone"], args["experiment"])
-    log_df_encoded, indices = encode(log_df)
+    log_df_encoded, _ = encode(log_df)
 
     numerical_features = ['timelapsed']
     log_df_test = normalize_events(log_df_encoded, args, numerical_features)

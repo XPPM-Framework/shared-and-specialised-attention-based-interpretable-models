@@ -53,7 +53,8 @@ def preprocess(log_df: pd.DataFrame, min_size: int, max_size: int, milestone: st
     if 'timelapsed' not in log_df.columns:
         log_df['end_timestamp'] = pd.to_datetime(log_df['end_timestamp'])
         log_df['trace_start'] = pd.to_datetime(log_df['trace_start'])
-        log_df['timelapsed'] = ((log_df['end_timestamp'] - log_df['trace_start']).dt.total_seconds()/3600).apply(math.ceil)
+        log_df['timelapsed'] = ((log_df['end_timestamp'] - log_df['trace_start']).dt.total_seconds() / 3600).apply(
+            math.ceil)
 
     # Add prefix_id if not already exists
     if 'prefix_id' not in log_df.columns:
@@ -177,6 +178,7 @@ def evaluate_specialised(model_specialised, vec_test, indices, args, batch_size:
     results = model_specialised.evaluate(x_test, y_test, batch_size=batch_size)
     y_pred = model_specialised.predict(x_test)
     print("test loss, test acc:", results)
+    return results
 
 
 def explain_specialised(model, vec_test, indices: dict[str, dict], args, batch_size: int):
@@ -237,7 +239,7 @@ def encode(log_df: pd.DataFrame):
     # Index creation for next activity
     ne_index = create_index(log_df, 'next_activity')
     # Hackery because if not all activities are in the next activity the index will be missing
-    if len(ne_index) < len(ac_index)-1:
+    if len(ne_index) < len(ac_index) - 1:
         ne_index = ac_index
 
         # ne_index = {}
@@ -323,3 +325,16 @@ def apply_log_config(log_df: pd.DataFrame, log_config: dict) -> pd.DataFrame:
     }
 
     return log_df.rename(rename_dict, axis=1)
+
+
+def restore_indices_int(indices: dict[str, dict]):
+    for index in indices:
+        try:
+            indices[index] = {int(k): v for k, v in indices[index].items()}
+        except ValueError:
+            pass
+        try:
+            indices[index] = {k: int(v) for k, v in indices[index].items()}
+        except ValueError:
+            pass
+    return indices
