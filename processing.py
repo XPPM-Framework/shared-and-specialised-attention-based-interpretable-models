@@ -47,9 +47,8 @@ def preprocess(log_df: pd.DataFrame, min_size: int, max_size: int, milestone: st
     if experiment == 'No_Loops':
         log_df = reduce_loops(log_df)
 
-    # TODO: Hack to have traces all start at 0 when trace_start is not given
     if 'trace_start' not in log_df.columns:
-        log_df['trace_start'] = "2024-01-01T12:00:00"
+        log_df["trace_start"] = log_df.groupby('caseid')['end_timestamp'].transform('min')
     # Add timelapsed column from end_timestamp and trace_start
     if 'timelapsed' not in log_df.columns:
         log_df['end_timestamp'] = pd.to_datetime(log_df['end_timestamp'])
