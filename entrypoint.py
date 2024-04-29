@@ -131,7 +131,7 @@ def explain(dataset: Path, model_path: Path,  *,
     max_size = 1000  # 3, 5, 10, 15, 20, 30, 50, 95
     min_size = 0  # 0, 3, 5, 10, 15, 20, 30, 50
     log_df = preprocess(log_df, min_size, max_size, args["milestone"], args["experiment"])
-    log_df_encoded, _ = encode(log_df)
+    log_df_encoded, _ = encode(log_df, indices)
 
     numerical_features = ['timelapsed']
     log_df_test = normalize_events(log_df_encoded, args, numerical_features)

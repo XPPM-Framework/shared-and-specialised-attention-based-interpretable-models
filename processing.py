@@ -223,42 +223,51 @@ def explain_specialised(model, vec_test, indices: dict[str, dict], args, batch_s
     return df_explanations
 
 
-def encode(log_df: pd.DataFrame):
+def encode(log_df: pd.DataFrame, indices: dict[str, dict] = None):
     """
     Create indices and apply them to the event log.
     """
-    # Index creation for activity
-    ac_index = create_index(log_df, 'task')
-    index_ac = {v: k for k, v in ac_index.items()}
+    if indices is None:
+        # Index creation for activity
+        ac_index = create_index(log_df, 'task')
+        index_ac = {v: k for k, v in ac_index.items()}
 
-    # Index creation for unit
+        # Index creation for unit
 
-    rl_index = create_index(log_df, 'role')
-    index_rl = {v: k for k, v in rl_index.items()}
+        rl_index = create_index(log_df, 'role')
+        index_rl = {v: k for k, v in rl_index.items()}
 
-    # Index creation for next activity
-    ne_index = create_index(log_df, 'next_activity')
-    # Hackery because if not all activities are in the next activity the index will be missing
-    if len(ne_index) < len(ac_index) - 1:
-        ne_index = ac_index
+        # Index creation for next activity
+        ne_index = create_index(log_df, 'next_activity')
+        # Hackery because if not all activities are in the next activity the index will be missing
+        if len(ne_index) < len(ac_index) - 1:
+            ne_index = ac_index
 
-        # ne_index = {}
-        # i = 0
-        # for ac in ac_index:
-        #     if ac == "none":
-        #         continue
-        #     ne_index[ac] = i
-        #     i += 1
+            # ne_index = {}
+            # i = 0
+            # for ac in ac_index:
+            #     if ac == "none":
+            #         continue
+            #     ne_index[ac] = i
+            #     i += 1
 
-    index_ne = {v: k for k, v in ne_index.items()}
+        index_ne = {v: k for k, v in ne_index.items()}
+
+        indices = {'index_ac': index_ac, 'index_rl': index_rl, 'index_ne': index_ne,
+                   'ac_index': ac_index, 'rl_index': rl_index, 'ne_index': ne_index}
+
+    else:
+        ac_index = indices['ac_index']
+        rl_index = indices['rl_index']
+        ne_index = indices['ne_index']
+        index_ac = indices['index_ac']
+        index_rl = indices['index_rl']
+        index_ne = indices['index_ne']
 
     # Mapping the dictionary values as columns in the dataframe
     log_df['ac_index'] = log_df['task'].map(ac_index)
     log_df['rl_index'] = log_df['role'].map(rl_index)
     log_df['ne_index'] = log_df['next_activity'].map(ne_index)
-
-    indices = {'index_ac': index_ac, 'index_rl': index_rl, 'index_ne': index_ne,
-               'ac_index': ac_index, 'rl_index': rl_index, 'ne_index': ne_index}
 
     # Add 'task_index' to log if not already exists
     if 'task_index' not in log_df.columns:
