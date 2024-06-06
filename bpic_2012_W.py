@@ -98,7 +98,6 @@ def _pre_processing_bpic_2012_w(dataset: DataFrame, args):
     # Obtain the maximum trc_len and cases for each set
 
     trc_len, cases = lengths(log_df)
-
     trc_len = max([trc_len])
 
     # Converting the training log into a tensor

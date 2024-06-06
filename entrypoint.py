@@ -25,6 +25,7 @@ def train(model_type: str, dataset: Path, model_path: Path, *,
           experiment_dir: Path = None,
           milestone: str = "All", experiment: str = "OHE",
           n_size: int = typer.Option(default=5, help="(Explanation) Prefix size"),
+          max_trc_len: int = typer.Option(default=0, help="Maximum trace length"),
           parameters: Annotated[dict, typer.Argument(parser=json.loads)] = None):
     """
 
@@ -36,6 +37,7 @@ def train(model_type: str, dataset: Path, model_path: Path, *,
     :param milestone: "All" or activities in the dataset.\n
     :param experiment: "OHE" or "No_loops", which filters out loops from the traces.\n
     :param n_size: Prefix size (for explanations).\n
+    :param max_trc_len: The maximum trace length. Maximum of this and length from dataset is used. Defaults to 0.\n
     :param parameters: Dictionary of parameters for the algorithm.\n
     """
     typer.echo(f"Running experiment with method Wickramanayake2022 on dataset {dataset}")
@@ -57,8 +59,8 @@ def train(model_type: str, dataset: Path, model_path: Path, *,
     max_size = 1000  # 3, 5, 10, 15, 20, 30, 50, 95
     min_size = 0  # 0, 3, 5, 10, 15, 20, 30, 50
     # TODO: Add prefix_id to the log_df (caseid_index) if not already exists
-    log_df = preprocess(log_df, min_size, max_size, milestone, experiment)
-    log_df_encoded, indices = encode(log_df)
+    log_df_preprocessed = preprocess(log_df, min_size, max_size, milestone, experiment)
+    log_df_encoded, indices = encode(log_df_preprocessed)
 
     args["indices"] = indices
     index_ac = indices['index_ac']
@@ -78,6 +80,7 @@ def train(model_type: str, dataset: Path, model_path: Path, *,
     training_traces = len(log_df_encoded['prefix_id'].unique())
     log_train = reformat_events(log_df_encoded, ac_index, rl_index, ne_index)
     trc_len, cases_train = lengths(log_train)
+    trc_len = max(trc_len, max_trc_len)
     args["trc_len"] = trc_len
     vec_train = vectorization(log_train, ac_index, rl_index, ne_index, trc_len, cases_train)
 
@@ -130,8 +133,8 @@ def explain(dataset: Path, model_path: Path,  *,
         log_df = apply_log_config(log_df, log_config)
     max_size = 1000  # 3, 5, 10, 15, 20, 30, 50, 95
     min_size = 0  # 0, 3, 5, 10, 15, 20, 30, 50
-    log_df = preprocess(log_df, min_size, max_size, args["milestone"], args["experiment"])
-    log_df_encoded, _ = encode(log_df, indices)
+    log_df_preprocessed = preprocess(log_df, min_size, max_size, args["milestone"], args["experiment"])
+    log_df_encoded, _ = encode(log_df_preprocessed, indices)
 
     numerical_features = ['timelapsed']
     log_df_test = normalize_events(log_df_encoded, args, numerical_features)
@@ -148,16 +151,16 @@ def explain(dataset: Path, model_path: Path,  *,
     model_type = args["model_type"]
     print(f"Explain {model_type} model")
     if model_type == "shared":
-        eval_results = evaluate_shared(model, vec_test, args, batch_size)
+        # eval_results = evaluate_shared(model, vec_test, args, batch_size)
         df_explanation = explain_shared(model, vec_test, indices, args, batch_size)
 
     elif model_type == "specialised":
-        eval_results = evaluate_specialised(model, vec_test, indices, args, batch_size)
+        # eval_results = evaluate_specialised(model, vec_test, indices, args, batch_size)
         df_explanation = explain_specialised(model, vec_test, indices, args, batch_size)
     else:
         raise Exception(f"Model type '{model_type}' not recognized.")
 
-    print("eval loss, accuracy", eval_results)
+    # print("eval loss, accuracy", eval_results)
     df_log_test = df_log_from_list(log_test, indices)
     df_complete = pd.merge(df_log_test, df_explanation, left_index=True, right_index=True)
     # Reverse "ac_prefix", "rl_prefix", "tbtw_prefix" columns as they are written in reverse order

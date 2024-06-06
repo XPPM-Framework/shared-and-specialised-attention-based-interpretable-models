@@ -292,7 +292,7 @@ def explanation_to_row(ground_truth: str, predicted: str, df: pd.DataFrame):
     trace_length = len(df_exp[(df_exp["feature_category"] == "activity") & (df_exp["feature"] != "none")])
     no_features = len(df_exp["feature_category"].unique())  # Number of features
     # Set contributions to zero if they are past the trace length
-    df_exp.loc[df_exp.index >= trace_length * no_features, "contribution"] = 0
+    #df_exp.loc[df_exp.index >= trace_length * no_features, "contribution"] = 0  # Disabled because none of our business
     row_dict = {
         "ground_truth": ground_truth,
         "prediction": predicted,

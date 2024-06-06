@@ -7,6 +7,7 @@ from tqdm import tqdm
 from keras import Model
 from keras.src.utils import to_categorical
 from tensorflow.keras.models import load_model
+import numpy as np
 
 from data.processor import reduce_loops, create_index, split_train_test, normalize_events, reformat_events, lengths, \
     vectorization
@@ -39,8 +40,11 @@ def preprocess(log_df: pd.DataFrame, min_size: int, max_size: int, milestone: st
             case_df = case_df.sort_values(by='end_timestamp', ascending=True)
             case_df['next_activity'] = case_df['task'].shift(-1)
             # Replace nan with 'none' because of indexing
-            case_df['next_activity'] = case_df['next_activity'].fillna('none')
+            # case_df['next_activity'] = case_df['next_activity'].fillna('none')
             log_df.loc[case_df.index, 'next_activity'] = case_df['next_activity']
+
+        # Drop events with next_activity = None, so mostly only the last events
+        log_df = log_df[~log_df["next_activity"].isna()]
 
     log_df = log_df.fillna('none')
 
@@ -109,7 +113,8 @@ def train_shared(vec_train, weights, args, batch_size: int = 128, epochs: int = 
 def evaluate_shared(model_shared, vec_test, args, batch_size: int):
     print("Evaluate on test data")
     x_test, y_test = generate_inputs_shared(vec_test, args)
-    results = model_shared.evaluate(x_test, y_test, batch_size=batch_size)
+    # results = model_shared.evaluate(x_test, y_test, batch_size=batch_size)
+    results = (0, 0)
     y_pred_shared = model_shared.predict(x_test)
 
     m1_y_test = y_test.argmax(axis=1)
@@ -135,13 +140,19 @@ def explain_shared(model, vec_test, indices: dict[str, dict], args, batch_size: 
     # Shared Model Explainability
     x_test, y_test = generate_inputs_shared(vec_test, args)
 
-    results = model.evaluate(x_test, y_test, batch_size=batch_size)
+    # results = model.evaluate(x_test, y_test, batch_size=batch_size)
     #y_pred_shared = model.predict(x_test)
-    print("test loss, test acc:", results)
+    # print("test loss, test acc:", results)
 
     shared_model_attn_weights = Model(inputs=model.input,
                                       outputs=[model.output, model.get_layer('timestep_attention').output,
                                                model.get_layer('feature_importance').output])
+
+    # Final general nan replacement with warning
+    if (nan_value_count := np.isnan(x_test).sum()) > 0:
+         print(f"Replacing {nan_value_count} nan values in x_test with 0")
+         for i in range(len(x_test)):
+             x_test[i] = np.nan_to_num(x_test[i], nan=0.0)
 
     shared_output_with_attention = shared_model_attn_weights.predict(x_test)
 
@@ -264,6 +275,11 @@ def encode(log_df: pd.DataFrame, indices: dict[str, dict] = None):
         index_rl = indices['index_rl']
         index_ne = indices['index_ne']
 
+        # Ensure that rows are strings
+        log_df['task'] = log_df['task'].astype(str)
+        log_df['role'] = log_df['role'].astype(str)
+        log_df['next_activity'] = log_df['next_activity'].astype(str)
+
     # Mapping the dictionary values as columns in the dataframe
     log_df['ac_index'] = log_df['task'].map(ac_index)
     log_df['rl_index'] = log_df['role'].map(rl_index)
@@ -306,8 +322,8 @@ def df_log_from_list(log_list: list[dict], indices: dict[str, dict]) -> pd.DataF
     for trace in log_list:
         trace_mapped = {
             "caseid": fix_case_id(trace["caseid"]),
-            "ac_prefix": [indices["index_ac"][ac] for ac in trace["ac_order"]],
-            "rl_prefix": [indices["index_rl"][rl] for rl in trace["rl_order"]],
+            "ac_prefix": [indices["index_ac"].get(ac, "none") for ac in trace["ac_order"]],
+            "rl_prefix": [indices["index_rl"].get(rl, "none") for rl in trace["rl_order"]],
             "tbtw_prefix": trace["tbtw"],
             "next_activity": indices["index_ne"][trace["next_activity"]],
         }

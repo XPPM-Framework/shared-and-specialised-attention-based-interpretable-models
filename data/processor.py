@@ -67,7 +67,7 @@ def create_index(log_df, column):
       alias['none'] = 0
     else:
       for i, _ in enumerate(subsec_set):
-          alias[subsec_set[i]] = i  
+          alias[subsec_set[i]] = i
     #reorder by the index value
     alias = {k: v for k, v in sorted(alias.items(), key=lambda item: item[1])}
     return alias
@@ -98,6 +98,7 @@ def normalize_events(log_df,args,features):
             norm = lambda x: (x['%s_log'%(feature)]-mean_feature)/std_feature
             log_df['%s_norm'%(feature)] = log_df.apply(norm, axis=1)
     return log_df
+
 
 def reformat_events(log_df, ac_index, rl_index,ne_index):
     """Creates series of activities, roles and relative times per trace.
@@ -131,7 +132,7 @@ def reformat_events(log_df, ac_index, rl_index,ne_index):
                          ac_order=ac_order,
                          rl_order=rl_order,
                          tbtw=tbtw,
-                         next_activity = next_activity)
+                         next_activity=next_activity)
         temp_data.append(temp_dict)
 
     return temp_data
@@ -149,9 +150,9 @@ def vectorization(log, ac_index, rl_index, ne_index,trc_len,cases):
         vec: Dictionary that contains all the LSTM inputs. """
 
     vec = {'prefixes':dict(), 'prop':dict(),'next_activity':[]} 
-    len_ac = trc_len  
+    len_ac = trc_len
 
-    for i ,_ in enumerate(log):
+    for i,_ in enumerate(log):
 
         padding = np.zeros(len_ac-len(log[i]['ac_order']))
 

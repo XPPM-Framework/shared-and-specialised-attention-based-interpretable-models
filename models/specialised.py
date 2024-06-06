@@ -212,11 +212,11 @@ def generate_inputs_specialised(vec, args, indices):
         MAX_LEN = vec['prefixes']['x_ac_inp'].shape[1] 
 
     if experiment == 'OHE':
-        x = [to_categorical(vec['prefixes']['x_ac_inp'][:,:MAX_LEN],
-                                                num_classes=len(index_ac))]
-        x.append(to_categorical(vec['prefixes']['x_rl_inp'][:,:MAX_LEN],
-                                                num_classes=len(index_rl)))
-        x.append(vec['prefixes']['xt_inp'][:,:MAX_LEN])
+        x = [to_categorical(vec['prefixes']['x_ac_inp'][:, :MAX_LEN], num_classes=len(index_ac))]
+        resources: np.ndarray = vec['prefixes']['x_rl_inp'][:, :MAX_LEN]
+        resources = np.nan_to_num(resources, nan=0)  # If the resource is nan, replace it with 0
+        x.append(to_categorical(resources, num_classes=len(index_rl)))
+        x.append(vec['prefixes']['xt_inp'][:, :MAX_LEN])
 
     else:
 
