@@ -161,7 +161,7 @@ def explain(dataset: Path, model_path: Path,  *,
         raise Exception(f"Model type '{model_type}' not recognized.")
 
     # print("eval loss, accuracy", eval_results)
-    df_log_test = df_log_from_list(log_test, indices)
+    df_log_test = df_log_from_list(log_test, indices, log_config)
     df_complete = pd.merge(df_log_test, df_explanation, left_index=True, right_index=True)
     # Reverse "ac_prefix", "rl_prefix", "tbtw_prefix" columns as they are written in reverse order
     # df_complete["ac_prefix"] = df_complete["ac_prefix"].apply(lambda x: list(reversed(x)))

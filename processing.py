@@ -302,13 +302,14 @@ def get_weights(ac_index, index_ac, index_rl, ne_index, rl_index):
     return weights
 
 
-def df_log_from_list(log_list: list[dict], indices: dict[str, dict]) -> pd.DataFrame:
+def df_log_from_list(log_list: list[dict], indices: dict[str, dict], log_config: dict[str, str]) -> pd.DataFrame:
     """
     Reverts index mappings on activities, etc. to obtain a DataFrame of the log which matches the explanation DataFrame.
     Also fixes case_id to have a two-digit prefix_id and the associated sorting
     Args:
         log_list: The event log as a list of traces
         indices: Dict of index mappings for activity, role, and next activity
+        log_config: Config of the event log. Only "case_id_key" is required.
     """
 
     def fix_case_id(case_id: str) -> str:
@@ -321,7 +322,8 @@ def df_log_from_list(log_list: list[dict], indices: dict[str, dict]) -> pd.DataF
     log_list_mapped = []
     for trace in log_list:
         trace_mapped = {
-            "caseid": fix_case_id(trace["caseid"]),
+            log_config["case_id_key"]: "".join(trace["caseid"].split("_")[:-1]),
+            "prefix_id": fix_case_id(trace["caseid"]),
             "ac_prefix": [indices["index_ac"].get(ac, "none") for ac in trace["ac_order"]],
             "rl_prefix": [indices["index_rl"].get(rl, "none") for rl in trace["rl_order"]],
             "tbtw_prefix": trace["tbtw"],
