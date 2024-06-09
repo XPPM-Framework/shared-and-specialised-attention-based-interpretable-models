@@ -322,7 +322,7 @@ def df_log_from_list(log_list: list[dict], indices: dict[str, dict], log_config:
     log_list_mapped = []
     for trace in log_list:
         trace_mapped = {
-            log_config["case_id_key"]: "".join(trace["caseid"].split("_")[:-1]),
+            log_config["case_id_key"]: "_".join(trace["caseid"].split("_")[:-1]),
             "prefix_id": fix_case_id(trace["caseid"]),
             "ac_prefix": [indices["index_ac"].get(ac, "none") for ac in trace["ac_order"]],
             "rl_prefix": [indices["index_rl"].get(rl, "none") for rl in trace["rl_order"]],
