@@ -126,7 +126,8 @@ def reformat_events(log_df, ac_index, rl_index,ne_index):
         tbtw.reverse()
 
         #outcome
-        next_activity = max(x['ne_index'] for x in trace)
+        # next_activity = max(x['ne_index'] for x in trace)  # This line is broken because it is not always max
+        next_activity = [x['ne_index'] for x in trace][-1]
 
         temp_dict = dict(caseid=key,
                          ac_order=ac_order,
