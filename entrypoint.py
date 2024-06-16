@@ -95,8 +95,9 @@ def train(model_type: str, dataset: Path, model_path: Path, *,
         model_shared = train_shared(vec_train, weights, args, batch_size, epochs)
         model_shared.save(model_path)
     elif model_type == "specialised":
-        model_shared = train_specialised(vec_train, weights, indices, args, batch_size, epochs)
-        model_shared.save(model_path)
+        args["experiment"] = "not_OHE"  # Hack, as OHE preprocessing specific to specialised model breaks explanations
+        model_specialised = train_specialised(vec_train, weights, indices, args, batch_size, epochs)
+        model_specialised.save(model_path)
     else:
         raise Exception("Model type not recognized.")
 
@@ -155,6 +156,7 @@ def explain(dataset: Path, model_path: Path,  *,
         df_explanation = explain_shared(model, vec_test, indices, args, batch_size)
 
     elif model_type == "specialised":
+        args["experiment"] = "not_OHE"  # Hack, as OHE preprocessing specific to specialised model breaks explanations
         # eval_results = evaluate_specialised(model, vec_test, indices, args, batch_size)
         df_explanation = explain_specialised(model, vec_test, indices, args, batch_size)
     else:
