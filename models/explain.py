@@ -297,6 +297,7 @@ def explanation_to_row(ground_truth: str, predicted: str, df: pd.DataFrame):
         "ground_truth": ground_truth,
         "prediction": predicted,
         "features": df_exp["feature_category"].tolist(),
+        "feature_value": df_exp["feature"].tolist(),
         "explanation": df_exp["contribution"].tolist(),
     }
     df_row = pd.DataFrame([row_dict])

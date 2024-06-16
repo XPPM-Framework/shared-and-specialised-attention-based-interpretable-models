@@ -112,7 +112,7 @@ def reformat_events(log_df, ac_index, rl_index,ne_index):
     log_df = log_df.to_dict('records')
 
     temp_data = list()
-    log_df = sorted(log_df, key=lambda x: (x['prefix_id'], x['task_index']))
+    log_df = sorted(log_df, key=lambda x: (x['prefix_id'], x['task_index'], x['end_timestamp']))
     for key, group in itertools.groupby(log_df, key=lambda x: x['prefix_id']):
         trace = list(group)
         #dynamic features
