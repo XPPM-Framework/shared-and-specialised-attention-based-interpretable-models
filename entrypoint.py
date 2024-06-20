@@ -95,7 +95,6 @@ def train(model_type: str, dataset: Path, model_path: Path, *,
         model_shared = train_shared(vec_train, weights, args, batch_size, epochs)
         model_shared.save(model_path)
     elif model_type == "specialised":
-        args["experiment"] = "not_OHE"  # Hack, as OHE preprocessing specific to specialised model breaks explanations
         model_specialised = train_specialised(vec_train, weights, indices, args, batch_size, epochs)
         model_specialised.save(model_path)
     else:
